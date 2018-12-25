@@ -1,0 +1,15 @@
+#!/bin/sh
+
+mount -t proc none /proc
+mount -t sysfs none /sys
+mount -t securityfs securityfs /sys/kernel/security
+
+mdev -s
+
+mkdir /tmp
+mount -t tmpfs -o size=1M tmpfs /tmp
+
+echo "appraise func=BPRM_CHECK" > /sys/kernel/security/integrity/ima/policy
+
+echo Boot took $(cut -d' ' -f1 /proc/uptime) seconds
+exec /bin/sh

@@ -1,0 +1,7 @@
+*.tar.bz2
+*.tar.xz
+/busybox-*
+/linux-*
+/initramfs
+/out
+
