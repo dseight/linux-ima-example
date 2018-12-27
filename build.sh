@@ -1,6 +1,6 @@
 #!/bin/sh
 
-KERNEL=linux-4.19.12
+KERNEL=linux-3.19.8
 KERNEL_TAR=$KERNEL.tar.xz
 BUSYBOX=busybox-1.29.3
 BUSYBOX_TAR=$BUSYBOX.tar.bz2
@@ -21,17 +21,18 @@ build_kernel() {
     cd $BUILD_ROOT
 
     if [ ! -f $KERNEL_TAR ]; then
-        wget https://cdn.kernel.org/pub/linux/kernel/v4.x/$KERNEL_TAR
+        wget https://cdn.kernel.org/pub/linux/kernel/v3.x/$KERNEL_TAR
     fi
     if [ ! -d $KERNEL ]; then
         tar xf $KERNEL_TAR
     fi
 
     cp config/$KERNEL-config $KERNEL/.config
-    cp keys/ima-local-ca.pem $KERNEL/certs/signing_key.pem
+    cp keys/ima-local-ca.x509 $KERNEL/signing_key.x509
+    cp keys/ima-local-ca.priv $KERNEL/signing_key.priv
     cd $KERNEL
     make oldconfig
-    make -j8
+    make CC=gcc-4.8 -j8
 
     cp arch/x86/boot/bzImage $BUILD_ROOT/out/bzImage
 }

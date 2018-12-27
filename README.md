@@ -2,7 +2,7 @@
 
 ## Required packages
 
-    build-essential bc flex libncurses5-dev ima-evm-utils openssl qemu-system-x86
+    build-essential gcc-4.8 bc flex libncurses5-dev ima-evm-utils openssl qemu-system-x86
 
 ## Build
 
@@ -17,6 +17,7 @@ on first build. To work around this, just run `./build.sh` twice.
 ## Run
 
     qemu-system-x86_64 \
+        --cpu max \
         --nographic \
         --kernel out/bzImage \
         --drive file=out/system.img,if=virtio \
