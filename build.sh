@@ -25,8 +25,11 @@ build_kernel() {
     fi
     if [ ! -d $KERNEL ]; then
         tar xf $KERNEL_TAR
+        cd $KERNEL
+        patch -p1 < $BUILD_ROOT/0001-x86-asm-irq-Stop-relying-on-magic-JMP-behavior.patch
     fi
 
+    cd $BUILD_ROOT
     cp config/$KERNEL-config $KERNEL/.config
     cp keys/ima-local-ca.x509 $KERNEL/signing_key.x509
     cp keys/ima-local-ca.priv $KERNEL/signing_key.priv
