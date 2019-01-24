@@ -1,4 +1,4 @@
-From d0f243b0fbde96cfad7417d83982bb11ff4bbe93 Mon Sep 17 00:00:00 2001
+From c767915616c0417369b4e7bac33666d234b01794 Mon Sep 17 00:00:00 2001
 From: Andy Lutomirski <luto@kernel.org>
 Date: Fri, 22 May 2015 16:15:47 -0700
 Subject: [PATCH] x86/asm/irq: Stop relying on magic JMP behavior for
@@ -76,17 +76,17 @@ Cc: Thomas Gleixner <tglx@linutronix.de>
 Link: http://lkml.kernel.org/r/ac027962af343b0c599cbfcf50b945ad2ef3d7a8.1432336324.git.luto@kernel.org
 Signed-off-by: Ingo Molnar <mingo@kernel.org>
 ---
- arch/x86/include/asm/segment.h | 14 ++++++++++++--
+ arch/x86/include/asm/segment.h | 12 +++++++++++-
  arch/x86/kernel/head64.c       |  2 +-
  arch/x86/kernel/head_32.S      | 33 ++++++++++++++++++---------------
  arch/x86/kernel/head_64.S      | 20 +++++++++++---------
- 4 files changed, 42 insertions(+), 27 deletions(-)
+ 4 files changed, 41 insertions(+), 26 deletions(-)
 
 diff --git a/arch/x86/include/asm/segment.h b/arch/x86/include/asm/segment.h
-index db257a58..69670ae4 100644
+index c48a9503..0df78c10 100644
 --- a/arch/x86/include/asm/segment.h
 +++ b/arch/x86/include/asm/segment.h
-@@ -200,10 +200,20 @@
+@@ -212,8 +212,18 @@
  #define TLS_SIZE (GDT_ENTRY_TLS_ENTRIES * 8)
  
  #ifdef __KERNEL__
@@ -103,30 +103,27 @@ index db257a58..69670ae4 100644
  #ifndef __ASSEMBLY__
 -extern const char early_idt_handlers[NUM_EXCEPTION_VECTORS][2+2+5];
 +extern const char early_idt_handler_array[NUM_EXCEPTION_VECTORS][EARLY_IDT_HANDLER_SIZE];
- #ifdef CONFIG_TRACING
--#define trace_early_idt_handlers early_idt_handlers
-+# define trace_early_idt_handler_array early_idt_handler_array
- #endif
  
  /*
+  * Load a segment. Fall back on loading the zero
 diff --git a/arch/x86/kernel/head64.c b/arch/x86/kernel/head64.c
-index eda1a865..7823beb6 100644
+index 55b67614..3b861b76 100644
 --- a/arch/x86/kernel/head64.c
 +++ b/arch/x86/kernel/head64.c
-@@ -162,7 +162,7 @@ asmlinkage __visible void __init x86_64_start_kernel(char * real_mode_data)
+@@ -162,7 +162,7 @@ void __init x86_64_start_kernel(char * real_mode_data)
  	clear_bss();
  
  	for (i = 0; i < NUM_EXCEPTION_VECTORS; i++)
--		set_intr_gate(i, early_idt_handlers[i]);
-+		set_intr_gate(i, early_idt_handler_array[i]);
+-		set_intr_gate(i, &early_idt_handlers[i]);
++		set_intr_gate(i, &early_idt_handler_array[i]);
  	load_idt((const struct desc_ptr *)&idt_descr);
  
  	copy_bootdata(__va(real_mode_data));
 diff --git a/arch/x86/kernel/head_32.S b/arch/x86/kernel/head_32.S
-index f36bd42d..30a2aa37 100644
+index df63cae5..8060c8b9 100644
 --- a/arch/x86/kernel/head_32.S
 +++ b/arch/x86/kernel/head_32.S
-@@ -477,21 +477,22 @@ is486:
+@@ -499,21 +499,22 @@ check_x87:
  __INIT
  setup_once:
  	/*
@@ -155,7 +152,7 @@ index f36bd42d..30a2aa37 100644
  	addl $8,%edi
  	loop 1b
  
-@@ -523,26 +524,28 @@ setup_once:
+@@ -545,26 +546,28 @@ setup_once:
  	andl $0,setup_once_ref	/* Once is enough, thanks */
  	ret
  
@@ -192,7 +189,7 @@ index f36bd42d..30a2aa37 100644
  	cld
  
  	cmpl $2,(%esp)		# X86_TRAP_NMI
-@@ -602,7 +605,7 @@ ex_entry:
+@@ -624,7 +627,7 @@ ex_entry:
  is_nmi:
  	addl $8,%esp		/* drop vector number and error code */
  	iret
@@ -202,7 +199,7 @@ index f36bd42d..30a2aa37 100644
  /* This is the default interrupt "handler" :-) */
  	ALIGN
 diff --git a/arch/x86/kernel/head_64.S b/arch/x86/kernel/head_64.S
-index a468c0a6..a2dc0add 100644
+index f2a9a2aa..4786c1b9 100644
 --- a/arch/x86/kernel/head_64.S
 +++ b/arch/x86/kernel/head_64.S
 @@ -321,26 +321,28 @@ bad_address:

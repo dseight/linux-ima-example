@@ -1,6 +1,6 @@
 #!/bin/sh
 
-KERNEL=linux-3.19.8
+KERNEL=linux-3.10.49
 KERNEL_TAR=$KERNEL.tar.xz
 BUSYBOX=busybox-1.29.3
 BUSYBOX_TAR=$BUSYBOX.tar.bz2

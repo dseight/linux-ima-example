@@ -95,16 +95,13 @@ some dependencies between them.
         [*] The Extended 4 (ext4) filesystem
         [*]   Ext4 Security Labels
     Security options  --->
+        -*- Enable access key retention support
+        [*]   Enable the /proc/keys file by which keys may be viewed
         [*] Enable different security models
-        [*] Integrity subsystem
-        [*]   Digital signature verification using multiple keyrings
-        [*]     Enable asymmetric keys support
-        [*]   Integrity Measurement Architecture(IMA)
-                Default integrity hash algorithm (SHA256)
-        [*]     Appraise integrity measurements
-        [*]       ima_appraise boot parameter
-        [*]   Load X509 certificate onto the '.ima' trusted keyring
-        (/etc/keys/x509_ima.der) IMA X509 certificate path
+        [*] Digital signature verification using multiple keyrings
+        [*]   Enable asymmetric keys support
+        [*] Integrity Measurement Architecture(IMA)
+        [*]   Appraise integrity measurements
 
 ### Enable IMA audit support
 
