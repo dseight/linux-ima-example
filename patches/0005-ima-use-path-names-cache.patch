@@ -1,0 +1,50 @@
+From 456f5fd3f6017f10d04d459159ac7bd9e3815c5e Mon Sep 17 00:00:00 2001
+From: Dmitry Kasatkin <dmitry.kasatkin@gmail.com>
+Date: Wed, 1 Oct 2014 21:43:10 +0300
+Subject: [PATCH] ima: use path names cache
+
+__getname() uses slab allocation which is faster than kmalloc.
+Make use of it.
+
+Signed-off-by: Dmitry Kasatkin <d.kasatkin@samsung.com>
+Signed-off-by: Mimi Zohar <zohar@linux.vnet.ibm.com>
+---
+ security/integrity/ima/ima_api.c  | 4 ++--
+ security/integrity/ima/ima_main.c | 3 ++-
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/security/integrity/ima/ima_api.c b/security/integrity/ima/ima_api.c
+index 86885979918c..a99eb6d4bc09 100644
+--- a/security/integrity/ima/ima_api.c
++++ b/security/integrity/ima/ima_api.c
+@@ -325,11 +325,11 @@ const char *ima_d_path(struct path *path, char **pathbuf)
+ {
+ 	char *pathname = NULL;
+ 
+-	*pathbuf = kmalloc(PATH_MAX, GFP_KERNEL);
++	*pathbuf = __getname();
+ 	if (*pathbuf) {
+ 		pathname = d_absolute_path(path, *pathbuf, PATH_MAX);
+ 		if (IS_ERR(pathname)) {
+-			kfree(*pathbuf);
++			__putname(*pathbuf);
+ 			*pathbuf = NULL;
+ 			pathname = NULL;
+ 		}
+diff --git a/security/integrity/ima/ima_main.c b/security/integrity/ima/ima_main.c
+index 72faf0b5b05c..eeee00dce729 100644
+--- a/security/integrity/ima/ima_main.c
++++ b/security/integrity/ima/ima_main.c
+@@ -246,7 +246,8 @@ out_digsig:
+ 		rc = -EACCES;
+ 	kfree(xattr_value);
+ out_free:
+-	kfree(pathbuf);
++	if (pathbuf)
++		__putname(pathbuf);
+ out:
+ 	mutex_unlock(&inode->i_mutex);
+ 	if ((rc && must_appraise) && (ima_appraise & IMA_APPRAISE_ENFORCE))
+-- 
+2.20.1 (Apple Git-117)
+

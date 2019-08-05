@@ -1,0 +1,38 @@
+From 63a0eb7891bdf3ef32ecb6b01eb09106df646c10 Mon Sep 17 00:00:00 2001
+From: Michael Ellerman <mpe@ellerman.id.au>
+Date: Wed, 3 Dec 2014 17:04:50 +1100
+Subject: [PATCH] ima: Fix build failure on powerpc when TCG_IBMVTPM
+ dependencies are not met
+
+On powerpc we can end up with IMA=y and PPC_PSERIES=n which leads to:
+
+ warning: (IMA) selects TCG_IBMVTPM which has unmet direct dependencies (TCG_TPM && PPC_PSERIES)
+  tpm_ibmvtpm.c:(.text+0x14f3e8): undefined reference to `.plpar_hcall_norets'
+
+I'm not sure why IMA needs to select those user-visible symbols, but if
+it must then the simplest fix is to just express the proper dependencies
+on the select.
+
+Tested-by: Hon Ching (Vicky) Lo <lo1@us.ibm.com>
+Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
+Signed-off-by: Mimi Zohar <zohar@linux.vnet.ibm.com>
+---
+ security/integrity/ima/Kconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/security/integrity/ima/Kconfig b/security/integrity/ima/Kconfig
+index b80a93ec1ccc..57515bc915c0 100644
+--- a/security/integrity/ima/Kconfig
++++ b/security/integrity/ima/Kconfig
+@@ -10,7 +10,7 @@ config IMA
+ 	select CRYPTO_HASH_INFO
+ 	select TCG_TPM if HAS_IOMEM && !UML
+ 	select TCG_TIS if TCG_TPM && X86
+-	select TCG_IBMVTPM if TCG_TPM && PPC64
++	select TCG_IBMVTPM if TCG_TPM && PPC_PSERIES
+ 	help
+ 	  The Trusted Computing Group(TCG) runtime Integrity
+ 	  Measurement Architecture(IMA) maintains a list of hash
+-- 
+2.20.1 (Apple Git-117)
+

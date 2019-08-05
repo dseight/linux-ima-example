@@ -94,6 +94,8 @@ some dependencies between them.
     File systems  --->
         [*] The Extended 4 (ext4) filesystem
         [*]   Ext4 Security Labels
+    -*- Cryptographic API  --->
+        <*>   SHA224 and SHA256 digest algorithm
     Security options  --->
         [*] Enable different security models
         [*] Integrity subsystem

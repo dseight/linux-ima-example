@@ -1,0 +1,45 @@
+From d16a8585d3715ef161cc9858b50ea5d3c8b6079b Mon Sep 17 00:00:00 2001
+From: Dmitry Kasatkin <dmitry.kasatkin@gmail.com>
+Date: Wed, 1 Oct 2014 21:43:07 +0300
+Subject: [PATCH] integrity: add missing '__init' keyword for
+ integrity_init_keyring()
+
+integrity_init_keyring() is used only from kernel '__init'
+functions. Add it there as well.
+
+Signed-off-by: Dmitry Kasatkin <d.kasatkin@samsung.com>
+Signed-off-by: Mimi Zohar <zohar@linux.vnet.ibm.com>
+---
+ security/integrity/digsig.c    | 2 +-
+ security/integrity/integrity.h | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/security/integrity/digsig.c b/security/integrity/digsig.c
+index 8d4fbff8b87c..4f643d1b34dd 100644
+--- a/security/integrity/digsig.c
++++ b/security/integrity/digsig.c
+@@ -63,7 +63,7 @@ int integrity_digsig_verify(const unsigned int id, const char *sig, int siglen,
+ 	return -EOPNOTSUPP;
+ }
+ 
+-int integrity_init_keyring(const unsigned int id)
++int __init integrity_init_keyring(const unsigned int id)
+ {
+ 	const struct cred *cred = current_cred();
+ 	int err = 0;
+diff --git a/security/integrity/integrity.h b/security/integrity/integrity.h
+index 883a5fc75449..f51ad65c894d 100644
+--- a/security/integrity/integrity.h
++++ b/security/integrity/integrity.h
+@@ -129,7 +129,7 @@ struct integrity_iint_cache *integrity_iint_find(struct inode *inode);
+ int integrity_digsig_verify(const unsigned int id, const char *sig, int siglen,
+ 			    const char *digest, int digestlen);
+ 
+-int integrity_init_keyring(const unsigned int id);
++int __init integrity_init_keyring(const unsigned int id);
+ #else
+ 
+ static inline int integrity_digsig_verify(const unsigned int id,
+-- 
+2.20.1 (Apple Git-117)
+

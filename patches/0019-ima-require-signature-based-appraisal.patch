@@ -1,0 +1,63 @@
+From c57782c13ecd7e7aca66cbf0139ad2a72317dc81 Mon Sep 17 00:00:00 2001
+From: Dmitry Kasatkin <d.kasatkin@samsung.com>
+Date: Wed, 5 Nov 2014 17:01:16 +0200
+Subject: [PATCH] ima: require signature based appraisal
+
+This patch provides CONFIG_IMA_APPRAISE_SIGNED_INIT kernel configuration
+option to force IMA appraisal using signatures. This is useful, when EVM
+key is not initialized yet and we want securely initialize integrity or
+any other functionality.
+
+It forces embedded policy to require signature. Signed initialization
+script can initialize EVM key, update the IMA policy and change further
+requirement of everything to be signed.
+
+Changes in v3:
+* kernel parameter fixed to configuration option in the patch description
+
+Changes in v2:
+* policy change of this patch separated from the key loading patch
+
+Signed-off-by: Dmitry Kasatkin <d.kasatkin@samsung.com>
+Signed-off-by: Mimi Zohar <zohar@linux.vnet.ibm.com>
+---
+ security/integrity/ima/Kconfig      | 7 +++++++
+ security/integrity/ima/ima_policy.c | 6 ++++++
+ 2 files changed, 13 insertions(+)
+
+diff --git a/security/integrity/ima/Kconfig b/security/integrity/ima/Kconfig
+index b0840f9a552f..b80a93ec1ccc 100644
+--- a/security/integrity/ima/Kconfig
++++ b/security/integrity/ima/Kconfig
+@@ -149,3 +149,10 @@ config IMA_X509_PATH
+ 	default "/etc/keys/x509_ima.der"
+ 	help
+ 	   This option defines IMA X509 certificate path.
++
++config IMA_APPRAISE_SIGNED_INIT
++	bool "Require signed user-space initialization"
++	depends on IMA_LOAD_X509
++	default n
++	help
++	   This option requires user-space init to be signed.
+diff --git a/security/integrity/ima/ima_policy.c b/security/integrity/ima/ima_policy.c
+index 0d14d2591805..d1eefb9d65fb 100644
+--- a/security/integrity/ima/ima_policy.c
++++ b/security/integrity/ima/ima_policy.c
+@@ -100,7 +100,13 @@ static struct ima_rule_entry default_appraise_rules[] = {
+ 	{.action = DONT_APPRAISE, .fsmagic = SECURITYFS_MAGIC, .flags = IMA_FSMAGIC},
+ 	{.action = DONT_APPRAISE, .fsmagic = SELINUX_MAGIC, .flags = IMA_FSMAGIC},
+ 	{.action = DONT_APPRAISE, .fsmagic = CGROUP_SUPER_MAGIC, .flags = IMA_FSMAGIC},
++#ifndef CONFIG_IMA_APPRAISE_SIGNED_INIT
+ 	{.action = APPRAISE, .fowner = GLOBAL_ROOT_UID, .flags = IMA_FOWNER},
++#else
++	/* force signature */
++	{.action = APPRAISE, .fowner = GLOBAL_ROOT_UID,
++	 .flags = IMA_FOWNER | IMA_DIGSIG_REQUIRED},
++#endif
+ };
+ 
+ static LIST_HEAD(ima_default_rules);
+-- 
+2.20.1 (Apple Git-117)
+

@@ -1,0 +1,94 @@
+From 1bd7face74391ddfc568b3e638f156da1ed77aa6 Mon Sep 17 00:00:00 2001
+From: Roberto Sassu <roberto.sassu@polito.it>
+Date: Mon, 13 Oct 2014 14:08:41 +0200
+Subject: [PATCH] ima: allocate field pointers array on demand in
+ template_desc_init_fields()
+
+The allocation of a field pointers array is moved at the end of
+template_desc_init_fields() and done only if the value of the 'fields'
+and 'num_fields' parameters is not NULL. For just validating a template
+format string, retrieved template field pointers are placed in a temporary
+array.
+
+Changelog:
+ - v3:
+   - do not check in this patch if 'fields' and 'num_fields' are NULL
+     (suggested by Mimi Zohar)
+
+Signed-off-by: Roberto Sassu <roberto.sassu@polito.it>
+Signed-off-by: Mimi Zohar <zohar@linux.vnet.ibm.com>
+---
+ security/integrity/ima/ima_template.c | 34 ++++++++++-----------------
+ 1 file changed, 13 insertions(+), 21 deletions(-)
+
+diff --git a/security/integrity/ima/ima_template.c b/security/integrity/ima/ima_template.c
+index d93a58e603df..65117ba06809 100644
+--- a/security/integrity/ima/ima_template.c
++++ b/security/integrity/ima/ima_template.c
+@@ -117,8 +117,9 @@ static int template_desc_init_fields(const char *template_fmt,
+ 				     int *num_fields)
+ {
+ 	const char *template_fmt_ptr;
++	struct ima_template_field *found_fields[IMA_TEMPLATE_NUM_FIELDS_MAX];
+ 	int template_num_fields = template_fmt_size(template_fmt);
+-	int i, len, result = 0;
++	int i, len;
+ 
+ 	if (template_num_fields > IMA_TEMPLATE_NUM_FIELDS_MAX) {
+ 		pr_err("format string '%s' contains too many fields\n",
+@@ -126,41 +127,32 @@ static int template_desc_init_fields(const char *template_fmt,
+ 		return -EINVAL;
+ 	}
+ 
+-	*fields = kzalloc(template_num_fields * sizeof(*fields), GFP_KERNEL);
+-	if (*fields == NULL) {
+-		result = -ENOMEM;
+-		goto out;
+-	}
+-
+ 	for (i = 0, template_fmt_ptr = template_fmt; i < template_num_fields;
+ 	     i++, template_fmt_ptr += len + 1) {
+ 		char tmp_field_id[IMA_TEMPLATE_FIELD_ID_MAX_LEN + 1];
+-		struct ima_template_field *f;
+ 
+ 		len = strchrnul(template_fmt_ptr, '|') - template_fmt_ptr;
+ 		if (len == 0 || len > IMA_TEMPLATE_FIELD_ID_MAX_LEN) {
+ 			pr_err("Invalid field with length %d\n", len);
+-			result = -EINVAL;
+-			goto out;
++			return -EINVAL;
+ 		}
+ 
+ 		memcpy(tmp_field_id, template_fmt_ptr, len);
+ 		tmp_field_id[len] = '\0';
+-		f = lookup_template_field(tmp_field_id);
+-		if (!f) {
++		found_fields[i] = lookup_template_field(tmp_field_id);
++		if (!found_fields[i]) {
+ 			pr_err("field '%s' not found\n", tmp_field_id);
+-			result = -ENOENT;
+-			goto out;
++			return -ENOENT;
+ 		}
+-		(*fields)[i] = f;
+ 	}
++
++	*fields = kmalloc_array(i, sizeof(*fields), GFP_KERNEL);
++	if (*fields == NULL)
++		return -ENOMEM;
++
++	memcpy(*fields, found_fields, i * sizeof(*fields));
+ 	*num_fields = i;
+-out:
+-	if (result < 0) {
+-		kfree(*fields);
+-		*fields = NULL;
+-	}
+-	return result;
++	return 0;
+ }
+ 
+ struct ima_template_desc *ima_template_desc_current(void)
+-- 
+2.20.1 (Apple Git-117)
+

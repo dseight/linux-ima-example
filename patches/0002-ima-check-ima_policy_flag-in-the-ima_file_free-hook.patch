@@ -1,0 +1,78 @@
+From 0f34a0060aebf202010b3f8fef348653a2df2346 Mon Sep 17 00:00:00 2001
+From: Dmitry Kasatkin <d.kasatkin@samsung.com>
+Date: Wed, 24 Sep 2014 11:05:10 +0300
+Subject: [PATCH] ima: check ima_policy_flag in the ima_file_free() hook
+
+This patch completes the switching to the 'ima_policy_flag' variable
+in the checks at the beginning of IMA functions, starting with the
+commit a756024e.
+
+Checking 'iint_initialized' is completely unnecessary, because
+S_IMA flag is unset if iint was not allocated. At the same time
+the integrity cache is allocated with SLAB_PANIC and the kernel will
+panic if the allocation fails during kernel initialization. So on
+a running system iint_initialized is always true and can be removed.
+
+Changes in v3:
+* not limiting test to IMA_APPRAISE (spotted by Roberto Sassu)
+
+Changes in v2:
+* 'iint_initialized' removal patch merged to this patch (requested
+   by Mimi)
+
+Signed-off-by: Dmitry Kasatkin <d.kasatkin@samsung.com>
+Acked-by: Roberto Sassu <roberto.sassu@polito.it>
+---
+ security/integrity/iint.c         | 3 ---
+ security/integrity/ima/ima_main.c | 2 +-
+ security/integrity/integrity.h    | 3 ---
+ 3 files changed, 1 insertion(+), 7 deletions(-)
+
+diff --git a/security/integrity/iint.c b/security/integrity/iint.c
+index a521edf4cbd6..cc3eb4de18a1 100644
+--- a/security/integrity/iint.c
++++ b/security/integrity/iint.c
+@@ -25,8 +25,6 @@ static struct rb_root integrity_iint_tree = RB_ROOT;
+ static DEFINE_RWLOCK(integrity_iint_lock);
+ static struct kmem_cache *iint_cache __read_mostly;
+ 
+-int iint_initialized;
+-
+ /*
+  * __integrity_iint_find - return the iint associated with an inode
+  */
+@@ -166,7 +164,6 @@ static int __init integrity_iintcache_init(void)
+ 	iint_cache =
+ 	    kmem_cache_create("iint_cache", sizeof(struct integrity_iint_cache),
+ 			      0, SLAB_PANIC, init_once);
+-	iint_initialized = 1;
+ 	return 0;
+ }
+ security_initcall(integrity_iintcache_init);
+diff --git a/security/integrity/ima/ima_main.c b/security/integrity/ima/ima_main.c
+index 62f59eca32d3..72faf0b5b05c 100644
+--- a/security/integrity/ima/ima_main.c
++++ b/security/integrity/ima/ima_main.c
+@@ -143,7 +143,7 @@ void ima_file_free(struct file *file)
+ 	struct inode *inode = file_inode(file);
+ 	struct integrity_iint_cache *iint;
+ 
+-	if (!iint_initialized || !S_ISREG(inode->i_mode))
++	if (!ima_policy_flag || !S_ISREG(inode->i_mode))
+ 		return;
+ 
+ 	iint = integrity_iint_find(inode);
+diff --git a/security/integrity/integrity.h b/security/integrity/integrity.h
+index c0379d13dbe1..883a5fc75449 100644
+--- a/security/integrity/integrity.h
++++ b/security/integrity/integrity.h
+@@ -169,6 +169,3 @@ static inline void integrity_audit_msg(int audit_msgno, struct inode *inode,
+ {
+ }
+ #endif
+-
+-/* set during initialization */
+-extern int iint_initialized;
+-- 
+2.20.1 (Apple Git-117)
+

@@ -1,0 +1,98 @@
+From c9cd2ce2bc6313aafa33f8e28d29a8690252f219 Mon Sep 17 00:00:00 2001
+From: Dmitry Kasatkin <d.kasatkin@samsung.com>
+Date: Wed, 5 Nov 2014 17:01:15 +0200
+Subject: [PATCH] integrity: provide a hook to load keys when rootfs is ready
+
+Keys can only be loaded once the rootfs is mounted. Initcalls
+are not suitable for that. This patch defines a special hook
+to load the x509 public keys onto the IMA keyring, before
+attempting to access any file. The keys are required for
+verifying the file's signature. The hook is called after the
+root filesystem is mounted and before the kernel calls 'init'.
+
+Changes in v3:
+* added more explanation to the patch description (Mimi)
+
+Changes in v2:
+* Hook renamed as 'integrity_load_keys()' to handle both IMA and EVM
+  keys by integrity subsystem.
+* Hook patch moved after defining loading functions
+
+Signed-off-by: Dmitry Kasatkin <d.kasatkin@samsung.com>
+Signed-off-by: Mimi Zohar <zohar@linux.vnet.ibm.com>
+---
+ include/linux/integrity.h |  6 ++++++
+ init/main.c               |  6 +++++-
+ security/integrity/iint.c | 11 +++++++++++
+ 3 files changed, 22 insertions(+), 1 deletion(-)
+
+diff --git a/include/linux/integrity.h b/include/linux/integrity.h
+index 83222cebd47b..c2d6082a1a4c 100644
+--- a/include/linux/integrity.h
++++ b/include/linux/integrity.h
+@@ -24,6 +24,7 @@ enum integrity_status {
+ #ifdef CONFIG_INTEGRITY
+ extern struct integrity_iint_cache *integrity_inode_get(struct inode *inode);
+ extern void integrity_inode_free(struct inode *inode);
++extern void __init integrity_load_keys(void);
+ 
+ #else
+ static inline struct integrity_iint_cache *
+@@ -36,5 +37,10 @@ static inline void integrity_inode_free(struct inode *inode)
+ {
+ 	return;
+ }
++
++static inline void integrity_load_keys(void)
++{
++}
+ #endif /* CONFIG_INTEGRITY */
++
+ #endif /* _LINUX_INTEGRITY_H */
+diff --git a/init/main.c b/init/main.c
+index e8ae1fef0908..2c1928d08b78 100644
+--- a/init/main.c
++++ b/init/main.c
+@@ -78,6 +78,7 @@
+ #include <linux/context_tracking.h>
+ #include <linux/random.h>
+ #include <linux/list.h>
++#include <linux/integrity.h>
+ 
+ #include <asm/io.h>
+ #include <asm/bugs.h>
+@@ -1026,8 +1027,11 @@ static noinline void __init kernel_init_freeable(void)
+ 	 * Ok, we have completed the initial bootup, and
+ 	 * we're essentially up and running. Get rid of the
+ 	 * initmem segments and start the user-mode stuff..
++	 *
++	 * rootfs is available now, try loading the public keys
++	 * and default modules
+ 	 */
+ 
+-	/* rootfs is available now, try loading default modules */
++	integrity_load_keys();
+ 	load_default_modules();
+ }
+diff --git a/security/integrity/iint.c b/security/integrity/iint.c
+index dbee618526b6..df45640fbac6 100644
+--- a/security/integrity/iint.c
++++ b/security/integrity/iint.c
+@@ -245,3 +245,14 @@ out:
+ 	fput(file);
+ 	return rc;
+ }
++
++/*
++ * integrity_load_keys - load integrity keys hook
++ *
++ * Hooks is called from init/main.c:kernel_init_freeable()
++ * when rootfs is ready
++ */
++void __init integrity_load_keys(void)
++{
++	ima_load_x509();
++}
+-- 
+2.20.1 (Apple Git-117)
+

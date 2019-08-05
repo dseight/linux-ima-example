@@ -1,0 +1,35 @@
+From 78bb5d0b4fe1988ae1a2a0cad0776134846414bd Mon Sep 17 00:00:00 2001
+From: Dmitry Kasatkin <d.kasatkin@samsung.com>
+Date: Fri, 3 Oct 2014 14:40:18 +0300
+Subject: [PATCH] ima: report policy load status
+
+Audit messages are rate limited, often causing the policy update
+info to not be visible.  Report policy loading status also using
+pr_info.
+
+Changes in v2:
+* reporting moved to ima_release_policy to notice parsing errors
+* reporting both completed and failed status
+
+Signed-off-by: Dmitry Kasatkin <d.kasatkin@samsung.com>
+Signed-off-by: Mimi Zohar <zohar@linux.vnet.ibm.com>
+---
+ security/integrity/ima/ima_fs.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/security/integrity/ima/ima_fs.c b/security/integrity/ima/ima_fs.c
+index da92fcc08d15..16d85273d408 100644
+--- a/security/integrity/ima/ima_fs.c
++++ b/security/integrity/ima/ima_fs.c
+@@ -311,6 +311,8 @@ static int ima_open_policy(struct inode *inode, struct file *filp)
+  */
+ static int ima_release_policy(struct inode *inode, struct file *file)
+ {
++	pr_info("IMA: policy update %s\n",
++		valid_policy ? "completed" : "failed");
+ 	if (!valid_policy) {
+ 		ima_delete_rules();
+ 		valid_policy = 1;
+-- 
+2.20.1 (Apple Git-117)
+

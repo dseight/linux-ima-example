@@ -1,0 +1,130 @@
+From 0716abbb58e3c47e04354c2502083854f49c34e5 Mon Sep 17 00:00:00 2001
+From: Dmitry Kasatkin <d.kasatkin@samsung.com>
+Date: Fri, 3 Oct 2014 14:40:21 +0300
+Subject: [PATCH] ima: use atomic bit operations to protect policy update
+ interface
+
+The current implementation uses an atomic counter to provide exclusive
+access to the sysfs 'policy' entry to update the IMA policy. While it is
+highly unlikely, the usage of a counter might potentially allow another
+process to overflow the counter, open the interface and insert additional
+rules into the policy being loaded.
+
+This patch replaces using an atomic counter with atomic bit operations
+which is more reliable and a widely used method to provide exclusive access.
+
+As bit operation keep the interface locked after successful update, it makes
+it unnecessary to verify if the default policy was set or not during parsing
+and interface closing. This patch also removes that code.
+
+Changes in v3:
+* move audit log message to ima_relead_policy() to report successful and
+  unsuccessful result
+* unnecessary comment removed
+
+Changes in v2:
+* keep interface locked after successful policy load as in original design
+* remove sysfs entry as in original design
+
+Signed-off-by: Dmitry Kasatkin <d.kasatkin@samsung.com>
+Signed-off-by: Mimi Zohar <zohar@linux.vnet.ibm.com>
+---
+ security/integrity/ima/ima_fs.c     | 23 ++++++++++++++++-------
+ security/integrity/ima/ima_policy.c | 23 ++---------------------
+ 2 files changed, 18 insertions(+), 28 deletions(-)
+
+diff --git a/security/integrity/ima/ima_fs.c b/security/integrity/ima/ima_fs.c
+index 16d85273d408..973b5683a92e 100644
+--- a/security/integrity/ima/ima_fs.c
++++ b/security/integrity/ima/ima_fs.c
+@@ -288,7 +288,12 @@ static struct dentry *runtime_measurements_count;
+ static struct dentry *violations;
+ static struct dentry *ima_policy;
+ 
+-static atomic_t policy_opencount = ATOMIC_INIT(1);
++enum ima_fs_flags {
++	IMA_FS_BUSY,
++};
++
++static unsigned long ima_fs_flags;
++
+ /*
+  * ima_open_policy: sequentialize access to the policy file
+  */
+@@ -297,9 +302,9 @@ static int ima_open_policy(struct inode *inode, struct file *filp)
+ 	/* No point in being allowed to open it if you aren't going to write */
+ 	if (!(filp->f_flags & O_WRONLY))
+ 		return -EACCES;
+-	if (atomic_dec_and_test(&policy_opencount))
+-		return 0;
+-	return -EBUSY;
++	if (test_and_set_bit(IMA_FS_BUSY, &ima_fs_flags))
++		return -EBUSY;
++	return 0;
+ }
+ 
+ /*
+@@ -311,12 +316,16 @@ static int ima_open_policy(struct inode *inode, struct file *filp)
+  */
+ static int ima_release_policy(struct inode *inode, struct file *file)
+ {
+-	pr_info("IMA: policy update %s\n",
+-		valid_policy ? "completed" : "failed");
++	const char *cause = valid_policy ? "completed" : "failed";
++
++	pr_info("IMA: policy update %s\n", cause);
++	integrity_audit_msg(AUDIT_INTEGRITY_STATUS, NULL, NULL,
++			    "policy_update", cause, !valid_policy, 0);
++
+ 	if (!valid_policy) {
+ 		ima_delete_rules();
+ 		valid_policy = 1;
+-		atomic_set(&policy_opencount, 1);
++		clear_bit(IMA_FS_BUSY, &ima_fs_flags);
+ 		return 0;
+ 	}
+ 	ima_update_policy();
+diff --git a/security/integrity/ima/ima_policy.c b/security/integrity/ima/ima_policy.c
+index d2c47d4df7b7..0d14d2591805 100644
+--- a/security/integrity/ima/ima_policy.c
++++ b/security/integrity/ima/ima_policy.c
+@@ -356,19 +356,8 @@ void __init ima_init_policy(void)
+  */
+ void ima_update_policy(void)
+ {
+-	static const char op[] = "policy_update";
+-	const char *cause = "already-exists";
+-	int result = 1;
+-	int audit_info = 0;
+-
+-	if (ima_rules == &ima_default_rules) {
+-		ima_rules = &ima_policy_rules;
+-		ima_update_policy_flag();
+-		cause = "complete";
+-		result = 0;
+-	}
+-	integrity_audit_msg(AUDIT_INTEGRITY_STATUS, NULL,
+-			    NULL, op, cause, result, audit_info);
++	ima_rules = &ima_policy_rules;
++	ima_update_policy_flag();
+ }
+ 
+ enum {
+@@ -686,14 +675,6 @@ ssize_t ima_parse_add_rule(char *rule)
+ 	ssize_t result, len;
+ 	int audit_info = 0;
+ 
+-	/* Prevent installed policy from changing */
+-	if (ima_rules != &ima_default_rules) {
+-		integrity_audit_msg(AUDIT_INTEGRITY_STATUS, NULL,
+-				    NULL, op, "already-exists",
+-				    -EACCES, audit_info);
+-		return -EACCES;
+-	}
+-
+ 	p = strsep(&rule, "\n");
+ 	len = strlen(p) + 1;
+ 	p += strspn(p, " \t");
+-- 
+2.20.1 (Apple Git-117)
+

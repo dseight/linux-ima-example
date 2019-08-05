@@ -1,0 +1,49 @@
+From 272a6e90ffee1dea39efd6fdf9592edc83a0738e Mon Sep 17 00:00:00 2001
+From: Dmitry Kasatkin <d.kasatkin@samsung.com>
+Date: Fri, 3 Oct 2014 14:40:19 +0300
+Subject: [PATCH] ima: no need to allocate entry for comment
+
+If a rule is a comment, there is no need to allocate an entry.
+Move the checking for comments before allocating the entry.
+
+Signed-off-by: Dmitry Kasatkin <d.kasatkin@samsung.com>
+Signed-off-by: Mimi Zohar <zohar@linux.vnet.ibm.com>
+---
+ security/integrity/ima/ima_policy.c | 14 ++++++--------
+ 1 file changed, 6 insertions(+), 8 deletions(-)
+
+diff --git a/security/integrity/ima/ima_policy.c b/security/integrity/ima/ima_policy.c
+index cdc620b2152f..bf232b98011e 100644
+--- a/security/integrity/ima/ima_policy.c
++++ b/security/integrity/ima/ima_policy.c
+@@ -694,6 +694,12 @@ ssize_t ima_parse_add_rule(char *rule)
+ 		return -EACCES;
+ 	}
+ 
++	p = strsep(&rule, "\n");
++	len = strlen(p) + 1;
++
++	if (*p == '#')
++		return len;
++
+ 	entry = kzalloc(sizeof(*entry), GFP_KERNEL);
+ 	if (!entry) {
+ 		integrity_audit_msg(AUDIT_INTEGRITY_STATUS, NULL,
+@@ -703,14 +709,6 @@ ssize_t ima_parse_add_rule(char *rule)
+ 
+ 	INIT_LIST_HEAD(&entry->list);
+ 
+-	p = strsep(&rule, "\n");
+-	len = strlen(p) + 1;
+-
+-	if (*p == '#') {
+-		kfree(entry);
+-		return len;
+-	}
+-
+ 	result = ima_parse_rule(p, entry);
+ 	if (result) {
+ 		kfree(entry);
+-- 
+2.20.1 (Apple Git-117)
+

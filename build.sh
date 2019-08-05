@@ -1,6 +1,6 @@
 #!/bin/sh
 
-KERNEL=linux-3.19.8
+KERNEL=linux-3.18
 KERNEL_TAR=$KERNEL.tar.xz
 BUSYBOX=busybox-1.29.3
 BUSYBOX_TAR=$BUSYBOX.tar.bz2
@@ -26,7 +26,10 @@ build_kernel() {
     if [ ! -d $KERNEL ]; then
         tar xf $KERNEL_TAR
         cd $KERNEL
-        patch -p1 < $BUILD_ROOT/patches/0001-x86-asm-irq-Stop-relying-on-magic-JMP-behavior.patch
+        for patch in $BUILD_ROOT/patches/*.patch; do
+            [ -e "$patch" ] || continue
+            patch -p1 < "$patch"
+        done
     fi
 
     cd $BUILD_ROOT

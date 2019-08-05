@@ -1,0 +1,45 @@
+From c2baec7ffaf6a2c15e03028ed9ef82a92cc49a94 Mon Sep 17 00:00:00 2001
+From: Dmitry Kasatkin <dmitry.kasatkin@gmail.com>
+Date: Wed, 1 Oct 2014 21:43:08 +0300
+Subject: [PATCH] evm: skip replacing EVM signature with HMAC on read-only
+ filesystem
+
+If filesystem is mounted read-only or file is immutable, updating
+xattr will fail. This is a usual case during early boot until
+filesystem is remount read-write. This patch verifies conditions
+to skip unnecessary attempt to calculate HMAC and set xattr.
+
+Changes in v2:
+* indention changed according to Lindent (requested by Mimi)
+
+Signed-off-by: Dmitry Kasatkin <d.kasatkin@samsung.com>
+Signed-off-by: Mimi Zohar <zohar@linux.vnet.ibm.com>
+---
+ security/integrity/evm/evm_main.c | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
+
+diff --git a/security/integrity/evm/evm_main.c b/security/integrity/evm/evm_main.c
+index 9685af330de5..b392fe614738 100644
+--- a/security/integrity/evm/evm_main.c
++++ b/security/integrity/evm/evm_main.c
+@@ -162,9 +162,14 @@ static enum integrity_status evm_verify_hmac(struct dentry *dentry,
+ 					(const char *)xattr_data, xattr_len,
+ 					calc.digest, sizeof(calc.digest));
+ 		if (!rc) {
+-			/* we probably want to replace rsa with hmac here */
+-			evm_update_evmxattr(dentry, xattr_name, xattr_value,
+-				   xattr_value_len);
++			/* Replace RSA with HMAC if not mounted readonly and
++			 * not immutable
++			 */
++			if (!IS_RDONLY(dentry->d_inode) &&
++			    !IS_IMMUTABLE(dentry->d_inode))
++				evm_update_evmxattr(dentry, xattr_name,
++						    xattr_value,
++						    xattr_value_len);
+ 		}
+ 		break;
+ 	default:
+-- 
+2.20.1 (Apple Git-117)
+
