@@ -26,7 +26,7 @@ build_kernel() {
     if [ ! -d $KERNEL ]; then
         tar xf $KERNEL_TAR
         cd $KERNEL
-        patch -p1 < $BUILD_ROOT/0001-x86-asm-irq-Stop-relying-on-magic-JMP-behavior.patch
+        patch -p1 < $BUILD_ROOT/patches/0001-x86-asm-irq-Stop-relying-on-magic-JMP-behavior.patch
     fi
 
     cd $BUILD_ROOT
