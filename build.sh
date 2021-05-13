@@ -31,7 +31,7 @@ build_kernel() {
     cp keys/ima-local-ca.pem $KERNEL/certs/signing_key.pem
     cd $KERNEL
     make oldconfig
-    make -j8
+    make -j$(getconf _NPROCESSORS_ONLN)
 
     cp arch/x86/boot/bzImage $BUILD_ROOT/out/bzImage
 }
@@ -49,7 +49,7 @@ build_busybox() {
     cp config/$BUSYBOX-config $BUSYBOX/.config
     cd $BUSYBOX
     make oldconfig
-    make -j8
+    make -j$(getconf _NPROCESSORS_ONLN)
     # Do not afraid, it will do install into a local directory (_install)
     make install
 }
