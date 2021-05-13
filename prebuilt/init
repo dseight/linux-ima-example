@@ -6,7 +6,7 @@ mount -t securityfs securityfs /sys/kernel/security
 
 mdev -s
 
-mkdir /tmp
+mkdir -p /tmp
 mount -t tmpfs -o size=1M tmpfs /tmp
 
 echo "appraise func=BPRM_CHECK appraise_type=imasig" > /sys/kernel/security/integrity/ima/policy
