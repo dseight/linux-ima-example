@@ -2,7 +2,7 @@
 
 KERNEL=linux-4.19.12
 KERNEL_TAR=$KERNEL.tar.xz
-BUSYBOX=busybox-1.29.3
+BUSYBOX=busybox-1.32.1
 BUSYBOX_TAR=$BUSYBOX.tar.bz2
 
 BUILD_ROOT=$(pwd)
